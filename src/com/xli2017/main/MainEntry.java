@@ -4,13 +4,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Pipe;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.logging.Level;
 
 public class MainEntry
 {
+	public static final int ITERATION = 1000;
+	public static final int DATA_LENGTH = 740;
+	public static final int DISPLAY_DIGITS_LIMIT = 10;
+	public static final int SEND_TIME_STEP = 30; // [ms]
+	public static final int RECEIVE_CHECK_TIME_STEP = 15; // [ms]
 	/** Pipe 0 for transmitting data between image capture thread and image process thread */
 	public static Pipe pipe_0;
 	public static Pipe.SinkChannel sinkChannel_0;
@@ -18,6 +19,9 @@ public class MainEntry
 	
 	public static SendThread sendThread;
 	public static ReceiveThread receiveThread;
+	public static ReceiveThread receiveThread_2;
+	
+	public static int[] counter;
 	
 	public MainEntry()
 	{
@@ -38,12 +42,16 @@ public class MainEntry
 		
 		MainEntry.sendThread = new SendThread();
 		MainEntry.receiveThread = new ReceiveThread();
+		MainEntry.receiveThread_2 = new ReceiveThread();
+		
+		counter = new int[3];
 	}
 	
 	public void run()
 	{
 		MainEntry.sendThread.start();
 		MainEntry.receiveThread.start();
+		MainEntry.receiveThread_2.start();
 	}
 	
 	public class SendThread extends Thread
@@ -61,11 +69,13 @@ public class MainEntry
 			/* Get current thread name */
 			Thread t = Thread.currentThread();
 		    String tName = t.getName();
+		    int executingTimes = 0;
 		    
-			while(true)
+		    
+			while(executingTimes < MainEntry.ITERATION)
 			{
+				executingTimes++;
 				int[] intArray = generateIntArray();
-				
 				
 				/* Output stream for concatenating */
 				ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -87,8 +97,12 @@ public class MainEntry
 				
 				/* Byte array going to be returned */
 				byte[] intInByte = outputStream.toByteArray();
-				System.out.print("--> " + tName + " sent " + intInByte.length + " bytes: ");
-				for (int i = 0; i < intInByte.length; i++)
+				
+				System.out.println(executingTimes);
+				
+				System.out.print("--> " + tName + " sent\t" + intInByte.length + " bytes, the front " 
+				+ MainEntry.DISPLAY_DIGITS_LIMIT + " bytes are: ");
+				for (int i = 0; (i < intInByte.length) && (i < MainEntry.DISPLAY_DIGITS_LIMIT); i++)
 				{
 					System.out.print(intInByte[i]);
 					System.out.print("\t");
@@ -96,7 +110,7 @@ public class MainEntry
 				System.out.println();
 				
 				System.out.print("--> " + "The number is: ");
-				for (int i = 0; i < intArray.length; i++)
+				for (int i = 0; (i < intArray.length) && (i < MainEntry.DISPLAY_DIGITS_LIMIT); i++)
 				{
 					System.out.print(intArray[i]);
 					System.out.print("\t");
@@ -132,23 +146,30 @@ public class MainEntry
 						}
 					}
 					this.buf.compact();
+					MainEntry.counter[0]++;
 				}
 				
 				try
 				{
-					Thread.sleep(300);
+					Thread.sleep(MainEntry.SEND_TIME_STEP);
 				}
 				catch (InterruptedException e)
 				{
 					e.printStackTrace();
 				}
 			}
+			
+			System.out.println("Sent: " + executingTimes + ";\n" 
+			+ "Thread-0: " + MainEntry.counter[0]
+					+ ";\n" + "Thread-1: " + MainEntry.counter[1]
+							+ ";\n" + "Thread-2: " + MainEntry.counter[2]);
+			System.exit(0);
 		}
 		
 		private int[] generateIntArray()
 		{
-			int[] intArray = new int[10];
-			for (int i = 0; i < 10; i++)
+			int[] intArray = new int[MainEntry.DATA_LENGTH];
+			for (int i = 0; i < intArray.length; i++)
 			{
 				intArray[i] = (int) Math.floor(100*Math.random());
 			}
@@ -172,6 +193,20 @@ public class MainEntry
 			/* Get current thread name */
 			Thread t = Thread.currentThread();
 		    String tName = t.getName();
+		    int threadIndex = 0;
+		    switch (tName)
+		    {
+		    case "Thread-1":
+		    	threadIndex = 1;
+		    	break;
+		    case "Thread-2":
+		    	threadIndex = 2;
+		    	break;
+		    	default:
+		    		System.out.println("The name of thread is wrong.");
+		    		System.exit(0);
+		    		break;
+		    }
 		    
 			while(true)
 			{
@@ -187,8 +222,9 @@ public class MainEntry
 				
 				if (intInByte != null) // New data comes
 				{
-					System.out.print("[_] " + tName + " received " + intInByte.length + " bytes: ");
-					for (int i = 0; i < intInByte.length; i++)
+					System.out.print("[_] " + tName + " receive\t" + intInByte.length + " bytes, the front "
+							+ MainEntry.DISPLAY_DIGITS_LIMIT + " bytes are: ");
+					for (int i = 0; (i < intInByte.length) && (i < MainEntry.DISPLAY_DIGITS_LIMIT); i++)
 					{
 						System.out.print(intInByte[i]);
 						System.out.print("\t");
@@ -196,8 +232,7 @@ public class MainEntry
 					System.out.println();
 					
 					System.out.print("[_] " + "The number is: ");
-//					System.out.print(IntFromDecimalAscii(intInByte));
-					for (int i = 0; i < intInByte.length; i = i+2)
+					for (int i = 0; (i < intInByte.length) && (i < MainEntry.DISPLAY_DIGITS_LIMIT*2); i = i+2)
 					{
 						byte[] twoDigitsByte = {intInByte[i], intInByte[i+1]};
 						System.out.print(IntFromDecimalAscii(twoDigitsByte));
@@ -205,11 +240,12 @@ public class MainEntry
 					}
 					System.out.println();
 					System.out.println();
+					MainEntry.counter[threadIndex]++;
 				}
 				
 				try
 				{
-					Thread.sleep(100);
+					Thread.sleep(MainEntry.RECEIVE_CHECK_TIME_STEP);
 				}
 				catch (InterruptedException e)
 				{
