@@ -8,8 +8,8 @@ import java.nio.channels.Pipe;
 public class MainEntry
 {
 	public static final int ITERATION = 1000;
-	public static final int DATA_LENGTH = 740;
-	public static final int DISPLAY_DIGITS_LIMIT = 10;
+	public static final int DATA_LENGTH = 740; // Need to be equal or bigger than DISPLAY_DIGITS_LIMIT
+	public static final int DISPLAY_DIGITS_LIMIT = 10; // Need to be equal or smaller than DATA_LENGTH
 	public static final int SEND_TIME_STEP = 30; // [ms]
 	public static final int RECEIVE_CHECK_TIME_STEP = 15; // [ms]
 	/** Pipe 0 for transmitting data between image capture thread and image process thread */
@@ -109,8 +109,8 @@ public class MainEntry
 				}
 				System.out.println();
 				
-				System.out.print("--> " + "The number is: ");
-				for (int i = 0; (i < intArray.length) && (i < MainEntry.DISPLAY_DIGITS_LIMIT); i++)
+				System.out.print("--> " + "The numbers are: ");
+				for (int i = 0; (i < intArray.length) && (i < MainEntry.DISPLAY_DIGITS_LIMIT/2); i++)
 				{
 					System.out.print(intArray[i]);
 					System.out.print("\t");
@@ -231,8 +231,8 @@ public class MainEntry
 					}
 					System.out.println();
 					
-					System.out.print("[_] " + "The number is: ");
-					for (int i = 0; (i < intInByte.length) && (i < MainEntry.DISPLAY_DIGITS_LIMIT*2); i = i+2)
+					System.out.print("[_] " + "The numbers are: ");
+					for (int i = 0; (i < intInByte.length) && (i < MainEntry.DISPLAY_DIGITS_LIMIT); i = i+2)
 					{
 						byte[] twoDigitsByte = {intInByte[i], intInByte[i+1]};
 						System.out.print(IntFromDecimalAscii(twoDigitsByte));
